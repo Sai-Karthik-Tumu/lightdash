@@ -2,6 +2,7 @@ import {
     getConditionalFormattingColor,
     getConditionalFormattingConfig,
     getConditionalFormattingDescription,
+    getFieldName,
     isNumericItem,
     ResultRow,
 } from '@lightdash/common';
@@ -59,6 +60,37 @@ const TableRow: FC<TableRowProps> = ({
     onSelectCell,
     minimal = false,
 }) => {
+    const targetFieldName = 'customers_customer_id';
+    let defaultColor: string | undefined;
+    let defaulttooltipContent: string | undefined;
+    row.getVisibleCells().map((cell) => {
+        const defaultmeta = cell.column.columnDef.meta;
+        const dafaultfield = defaultmeta?.item;
+        const defaultcellValue = cell.getValue() as ResultRow[0] | undefined;
+        const defaultfieldName = getFieldName(dafaultfield);
+
+        if (defaultfieldName === targetFieldName) {
+            const defaultconditionalFormattingConfig =
+                getConditionalFormattingConfig(
+                    dafaultfield,
+                    defaultcellValue?.value.raw,
+                    conditionalFormattings,
+                );
+
+            defaultColor = getConditionalFormattingColor(
+                dafaultfield,
+                defaultcellValue?.value.raw,
+                defaultconditionalFormattingConfig,
+                getColorFromRange,
+            );
+
+            defaulttooltipContent = getConditionalFormattingDescription(
+                dafaultfield,
+                defaultconditionalFormattingConfig,
+                getConditionalRuleLabel,
+            );
+        }
+    });
     return (
         <Tr $index={index}>
             {row.getVisibleCells().map((cell) => {
@@ -86,17 +118,18 @@ const TableRow: FC<TableRowProps> = ({
                     conditionalFormattingConfig,
                     getConditionalRuleLabel,
                 );
-
+                const backgroundColor = conditionalFormattingColor
+                    ? conditionalFormattingColor
+                    : defaultColor;
                 return (
                     <BodyCell
                         minimal={minimal}
                         key={cell.id}
                         style={meta?.style}
-                        backgroundColor={conditionalFormattingColor}
+                        backgroundColor={backgroundColor}
                         fontColor={
-                            conditionalFormattingColor &&
-                            readableColor(conditionalFormattingColor) ===
-                                'white'
+                            backgroundColor &&
+                            readableColor(backgroundColor) === 'white'
                                 ? 'white'
                                 : undefined
                         }
@@ -112,7 +145,11 @@ const TableRow: FC<TableRowProps> = ({
                             (cellValue?.value.formatted || '').length >
                             SMALL_TEXT_LENGTH
                         }
-                        tooltipContent={tooltipContent}
+                        tooltipContent={
+                            tooltipContent
+                                ? tooltipContent
+                                : defaulttooltipContent
+                        }
                         onSelect={() => onSelectCell?.(cell)}
                         onDeselect={() => onSelectCell?.(undefined)}
                         onKeyDown={(e) => onCopyCell?.(e)}
